@@ -1,0 +1,12 @@
+[
+    {
+        "teacherId": "T101",
+        "name": "Dr. Sharma",
+        "department": "MCA"
+    },
+    {
+        "teacherId": "T102",
+        "name": "Prof. Patil",
+        "department": "MBA"
+    }
+]

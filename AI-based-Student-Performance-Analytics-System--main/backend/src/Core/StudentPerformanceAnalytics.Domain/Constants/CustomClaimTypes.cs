@@ -1,0 +1,14 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace StudentPerformanceAnalytics.Domain.Constants
+{
+    public static class CustomClaimTypes
+    {
+        public const string Department = "Department";
+        public const string StudentId = "StudentId";
+    }
+}

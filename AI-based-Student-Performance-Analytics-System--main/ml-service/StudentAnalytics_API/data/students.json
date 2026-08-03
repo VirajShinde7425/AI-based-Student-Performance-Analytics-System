@@ -1,0 +1,41 @@
+[
+    {
+        "studentId": "ST101",
+        "name": "Pranav Mandavkar",
+        "department": "MCA",
+        "semester": 2,
+        "email": "pranav@example.com",
+        "attendance": 90,
+        "internalMarks": 80,
+        "assignmentMarks": 85,
+        "practicalMarks": 88,
+        "quizMarks": 84,
+        "cgpa": 8.4
+    },
+    {
+        "studentId": "ST102",
+        "name": "Rahul Sharma",
+        "department": "MCA",
+        "semester": 2,
+        "email": "rahul@example.com",
+        "attendance": 72,
+        "internalMarks": 63,
+        "assignmentMarks": 61,
+        "practicalMarks": 69,
+        "quizMarks": 58,
+        "cgpa": 6.9
+    },
+    {
+        "studentId": "ST103",
+        "name": "Neha Verma",
+        "department": "MCA",
+        "semester": 2,
+        "email": "neha@example.com",
+        "attendance": 62,
+        "internalMarks": 38,
+        "assignmentMarks": 45,
+        "practicalMarks": 54,
+        "quizMarks": 41,
+        "cgpa": 5.8
+    }
+]
