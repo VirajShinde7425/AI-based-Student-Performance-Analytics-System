@@ -85,6 +85,28 @@ public interface IStudentPortalService
     Task<List<StudentPredictionHistoryDto>> GetMyPredictionsAsync(Guid studentId);
 }
 
+public interface ITeacherService
+{
+    Task<IEnumerable<TeacherSummaryDto>> GetTeachersAsync();
+
+    Task<TeacherDetailDto?> GetTeacherByIdAsync(Guid id);
+
+    Task<TeacherSummaryDto> CreateTeacherAsync(CreateTeacherDto dto);
+
+    Task<bool> UpdateTeacherAsync(Guid id, CreateTeacherDto dto);
+
+    Task<bool> DeleteTeacherAsync(Guid id);
+
+    Task<bool> ResetTeacherPasswordAsync(Guid id);
+}
+
+public interface IAdminService
+{
+    Task<AdminDashboardDto> GetDashboardAsync();
+}
+
+
+
 // --- Service Implementations ---
 public class AuthService : IAuthService
 {
@@ -1131,6 +1153,163 @@ public class AttendanceService : IAttendanceService
                     p.Recommendation
                 ))
                 .ToList();
+        }
+    }
+
+
+    public class TeacherService : ITeacherService
+    {
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
+
+        public TeacherService(IUnitOfWork unitOfWork, IMapper mapper)
+        {
+            _unitOfWork = unitOfWork;
+            _mapper = mapper;
+        }
+
+        public async Task<IEnumerable<TeacherSummaryDto>> GetTeachersAsync()
+        {
+            var users = await _unitOfWork.Users.FindAsync(
+                u => u.Role == UserRole.Teacher);
+
+            return _mapper.Map<IEnumerable<TeacherSummaryDto>>(users);
+        }
+
+        public async Task<TeacherDetailDto?> GetTeacherByIdAsync(Guid id)
+        {
+            var teacher = await _unitOfWork.Users.GetByIdAsync(id);
+
+            if (teacher == null || teacher.Role != UserRole.Teacher)
+                return null;
+
+            return _mapper.Map<TeacherDetailDto>(teacher);
+        }
+
+        public async Task<TeacherSummaryDto> CreateTeacherAsync(CreateTeacherDto dto)
+        {
+            // Check if email already exists
+            var existingUser = await _unitOfWork.Users.FindAsync(
+                u => u.Email == dto.Email);
+
+            if (existingUser.Any())
+            {
+                throw new InvalidOperationException(
+                    "A user with this email already exists.");
+            }
+
+            var teacher = new User
+            {
+                Email = dto.Email,
+                FullName = dto.FullName,
+
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Teacher@123"),
+
+                Role = UserRole.Teacher,
+
+                Department = dto.Department,
+
+                Title = dto.Title,
+
+                AvatarUrl =
+                    $"https://api.dicebear.com/7.x/avataaars/svg?seed={dto.FullName}"
+            };
+
+            await _unitOfWork.Users.AddAsync(teacher);
+
+            await _unitOfWork.CompleteAsync();
+
+            return _mapper.Map<TeacherSummaryDto>(teacher);
+        }
+
+        public async Task<bool> UpdateTeacherAsync(Guid id, CreateTeacherDto dto)
+        {
+            var teacher = await _unitOfWork.Users.GetByIdAsync(id);
+
+            if (teacher == null || teacher.Role != UserRole.Teacher)
+                return false;
+
+            teacher.FullName = dto.FullName;
+            teacher.Email = dto.Email;
+            teacher.Department = dto.Department;
+            teacher.Title = dto.Title;
+
+            _unitOfWork.Users.Update(teacher);
+
+            await _unitOfWork.CompleteAsync();
+
+            return true;
+        }
+
+        public async Task<bool> DeleteTeacherAsync(Guid id)
+        {
+            var teacher = await _unitOfWork.Users.GetByIdAsync(id);
+
+            if (teacher == null || teacher.Role != UserRole.Teacher)
+                return false;
+
+            _unitOfWork.Users.Delete(teacher);
+
+            await _unitOfWork.CompleteAsync();
+
+            return true;
+        }
+
+        public async Task<bool> ResetTeacherPasswordAsync(Guid id)
+        {
+            var teacher = await _unitOfWork.Users.GetByIdAsync(id);
+
+            if (teacher == null || teacher.Role != UserRole.Teacher)
+                return false;
+
+            teacher.PasswordHash =
+                BCrypt.Net.BCrypt.HashPassword("Teacher@123");
+
+            _unitOfWork.Users.Update(teacher);
+
+            await _unitOfWork.CompleteAsync();
+
+            return true;
+        }
+    }
+
+
+    public class AdminService : IAdminService
+    {
+        private readonly IUnitOfWork _unitOfWork;
+
+        public AdminService(IUnitOfWork unitOfWork)
+        {
+            _unitOfWork = unitOfWork;
+        }
+
+        public async Task<AdminDashboardDto> GetDashboardAsync()
+        {
+            var teachers =
+                await _unitOfWork.Users.FindAsync(
+                    u => u.Role == Domain.Enums.UserRole.Teacher);
+
+            var students =
+                await _unitOfWork.Students.GetAllAsync();
+
+            var departments =
+                await _unitOfWork.Departments.GetAllAsync();
+
+            var predictions =
+                await _unitOfWork.Predictions.GetAllAsync();
+
+            return new AdminDashboardDto
+            {
+                TotalTeachers = teachers.Count(),
+
+                TotalStudents = students.Count(),
+
+                TotalDepartments = departments.Count(),
+
+                TotalPredictions = predictions.Count(),
+
+                SystemStatus = "Online"
+            };
         }
     }
 

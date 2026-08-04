@@ -53,6 +53,16 @@ export const Sidebar = () => {
   { id: "settings", label: "Settings", icon: Settings }
 ];
 
+const adminNavItems = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+
+  { id: "teachers", label: "Teacher Management", icon: Users },
+
+  { id: "students", label: "Student Management", icon: GraduationCap },
+
+  { id: "settings", label: "Settings", icon: Settings }
+];
+
 const studentNavItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
 
@@ -72,10 +82,17 @@ const studentNavItems = [
 ];
 
 
-const navItems =
-    currentUser?.role === "Teacher"
-        ? teacherNavItems
-        : studentNavItems;
+let navItems = [];
+
+if (currentUser?.role === "Admin") {
+    navItems = adminNavItems;
+}
+else if (currentUser?.role === "Teacher") {
+    navItems = teacherNavItems;
+}
+else {
+    navItems = studentNavItems;
+}
         
   return (
     <aside

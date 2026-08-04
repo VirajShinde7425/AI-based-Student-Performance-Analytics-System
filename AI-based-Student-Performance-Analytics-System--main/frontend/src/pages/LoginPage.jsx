@@ -9,7 +9,7 @@ export const LoginPage = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("Teacher");
+  // const [role, setRole] = useState("Teacher");
   const [rememberMe, setRememberMe] = useState(true);
 
   const handleSubmit = async (e) => {
@@ -35,13 +35,13 @@ export const LoginPage = () => {
 
   try {
 
-    await loginUser(email, password, role);
+  const user = await loginUser(email, password);
 
-    addToast(
-        "Welcome Back",
-        `Logged in successfully as ${role}.`,
-        "success"
-    );
+  addToast(
+      "Welcome Back",
+      `Logged in successfully as ${user.role}.`,
+      "success"
+  );
 
   } catch (err) {
 
@@ -119,7 +119,7 @@ export const LoginPage = () => {
               </p>
             </div>
 
-            {/* Role Switcher */}
+            {/* Role Switcher
             <div className="mb-6 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center">
               <button
                 type="button"
@@ -149,7 +149,7 @@ export const LoginPage = () => {
               >
                 Student Portal
               </button>
-            </div>
+            </div> */}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -212,7 +212,12 @@ export const LoginPage = () => {
           {/* Quick Demo Bypass */}
           <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
             <button
-              onClick={() => loginUser('sarah.jenkins@institution.edu', 'pass', 'Teacher')}
+              onClick={() =>
+                  loginUser(
+                      'sarah.jenkins@institution.edu',
+                      'Teacher@123'
+                  )
+              }
               className="text-xs font-semibold text-slate-500 hover:text-primary-600 dark:text-slate-400 flex items-center justify-center gap-1.5 mx-auto"
             >
               <UserCheck className="w-4 h-4 text-emerald-500" />

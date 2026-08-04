@@ -54,7 +54,7 @@ public class AuthController : ControllerBase
     }
 }
 
-[Authorize(Roles = "Teacher")]
+[Authorize(Roles = "Teacher,Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class StudentsController : ControllerBase
@@ -111,7 +111,7 @@ public class StudentsController : ControllerBase
 }
 
 
-[Authorize(Roles = "Teacher")]
+[Authorize(Roles = "Teacher,Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class AttendanceController : ControllerBase
@@ -142,7 +142,7 @@ public class AttendanceController : ControllerBase
     }
 }
 
-[Authorize(Roles = "Teacher")]
+[Authorize(Roles = "Teacher,Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class MarksController : ControllerBase
@@ -183,7 +183,7 @@ public class MarksController : ControllerBase
     }
 }
 
-[Authorize(Roles = "Teacher")]
+[Authorize(Roles = "Teacher,Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class AnalyticsController : ControllerBase
@@ -203,7 +203,7 @@ public class AnalyticsController : ControllerBase
     }
 }
 
-[Authorize(Roles = "Teacher")]
+[Authorize(Roles = "Teacher,Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class PredictionsController : ControllerBase
@@ -230,7 +230,7 @@ public class PredictionsController : ControllerBase
     }
 }
 
-[Authorize(Roles = "Teacher")]
+[Authorize(Roles = "Teacher,Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class ReportsController : ControllerBase
@@ -265,7 +265,7 @@ public class ReportsController : ControllerBase
     }
 }
 
-[Authorize(Roles = "Teacher")]
+[Authorize(Roles = "Teacher,Admin")]
 [ApiController]
 [Route("api/[controller]")]
 public class SettingsController : ControllerBase
@@ -382,5 +382,105 @@ public class MyController : ControllerBase
             .GetMyPredictionsAsync(studentId.Value);
 
         return Ok(predictions);
+    }
+}
+
+[Authorize(Roles = "Admin")]
+[ApiController]
+[Route("api/[controller]")]
+public class TeachersController : ControllerBase
+{
+    private readonly ITeacherService _teacherService;
+
+    public TeachersController(ITeacherService teacherService)
+    {
+        _teacherService = teacherService;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<TeacherSummaryDto>>> GetTeachers()
+    {
+        var teachers = await _teacherService.GetTeachersAsync();
+        return Ok(teachers);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<TeacherDetailDto>> GetTeacher(Guid id)
+    {
+        var teacher = await _teacherService.GetTeacherByIdAsync(id);
+
+        if (teacher == null)
+            return NotFound(new { message = "Teacher not found." });
+
+        return Ok(teacher);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<TeacherSummaryDto>> CreateTeacher(
+        [FromBody] CreateTeacherDto dto)
+    {
+        var created = await _teacherService.CreateTeacherAsync(dto);
+
+        return CreatedAtAction(
+            nameof(GetTeacher),
+            new { id = created.Id },
+            created);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateTeacher(
+        Guid id,
+        [FromBody] CreateTeacherDto dto)
+    {
+        var success = await _teacherService.UpdateTeacherAsync(id, dto);
+
+        if (!success)
+            return NotFound();
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteTeacher(Guid id)
+    {
+        var success = await _teacherService.DeleteTeacherAsync(id);
+
+        if (!success)
+            return NotFound();
+
+        return NoContent();
+    }
+
+    [HttpPut("{id:guid}/reset-password")]
+    public async Task<IActionResult> ResetPassword(Guid id)
+    {
+        var success = await _teacherService.ResetTeacherPasswordAsync(id);
+
+        if (!success)
+            return NotFound();
+
+        return NoContent();
+    }
+}
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "Admin")]
+public class AdminController : ControllerBase
+{
+    private readonly IAdminService _adminService;
+
+    public AdminController(IAdminService adminService)
+    {
+        _adminService = adminService;
+    }
+
+    [HttpGet("dashboard")]
+    public async Task<ActionResult<AdminDashboardDto>> GetDashboard()
+    {
+        var dashboard =
+            await _adminService.GetDashboardAsync();
+
+        return Ok(dashboard);
     }
 }

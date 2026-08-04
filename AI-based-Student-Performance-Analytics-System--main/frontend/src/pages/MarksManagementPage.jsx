@@ -181,7 +181,7 @@ setMarkErrors({});
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button
+          {/* <button
             onClick={() => setActiveModal('uploadMarks')}
             className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
           >
@@ -198,7 +198,7 @@ setMarkErrors({});
             className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
           >
             <Download className="w-4 h-4" /> Export Marksheet
-          </button>
+          </button> */}
           <button
             onClick={handleSaveMarks}
             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs rounded-xl shadow-md shadow-primary-600/20 flex items-center gap-1.5 transition-all"

@@ -25,6 +25,8 @@ export const AppProvider = ({ children }) => {
   // Global state for students
   const [students, setStudents] = useState([]);
 
+  const [teachers, setTeachers] = useState([]);
+
   const [marks, setMarks] = useState([]);
 
   // Dashboard Analytics
@@ -33,6 +35,8 @@ export const AppProvider = ({ children }) => {
   const [predictionData, setPredictionData] = useState(null);
 
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+
+  const [adminDashboard, setAdminDashboard] = useState(null);
 
   // Global filters
   const [filters, setFilters] = useState({
@@ -46,6 +50,7 @@ export const AppProvider = ({ children }) => {
   // Modals & Selected Student State
   const [activeModal, setActiveModal] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
 
   // ML API configuration state
   const [mlApiConfig, setMlApiConfig] = useState({
@@ -54,6 +59,32 @@ export const AppProvider = ({ children }) => {
     lastConfidence: 94.8,
     isLive: false
 });
+
+
+  const loadAdminDashboard = async () => {
+
+    console.log("loadAdminDashboard called");
+
+    try {
+
+        const response =
+            await api.get("/Admin/dashboard");
+
+        console.log("Admin API Response:", response.data);
+
+        setAdminDashboard(response.data);
+
+    }
+    catch (err) {
+
+        console.error(
+            "Unable to load admin dashboard.",
+            err
+        );
+
+    }
+
+};
 
   const loadStudents = async (filterData = filters) => {
   try {
@@ -79,6 +110,7 @@ export const AppProvider = ({ children }) => {
             : undefined
       }
     });
+
 
     const apiStudents = response.data;
 
@@ -146,6 +178,34 @@ const mappedStudents = apiStudents.map(student => ({
   }
 };
 
+    const loadTeachers = async () => {
+    try {
+
+        const response = await api.get("/Teachers");
+
+        const mappedTeachers = response.data.map(t => ({
+            id: t.id,
+            fullName: t.fullName,
+            email: t.email,
+            department: t.department,
+            title: t.title,
+
+            avatarUrl:
+                t.avatarUrl ||
+                `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.fullName}`
+        }));
+
+        setTeachers(mappedTeachers);
+
+    } catch (err) {
+
+        console.error("Unable to load teachers", err);
+
+    }
+};
+
+
+
 const loadDashboard = async () => {
     try {
 
@@ -211,25 +271,65 @@ const loadMarks = async () => {
   }, [darkMode]);
 
 useEffect(() => {
-    loadStudents();
-    loadDashboard();
-    loadMarks()
-    loadPredictions();
-}, []);
+
+    if (!isAuthenticated || !currentUser) {
+
+        return;
+
+    }
+
+    if (currentUser.role === "Admin") {
+
+        loadStudents();
+        loadTeachers();
+        loadAdminDashboard();
+
+    }
+    else if (currentUser.role === "Teacher") {
+
+        loadStudents();
+        loadDashboard();
+        loadMarks();
+        loadPredictions();
+
+    }
+    else if (currentUser.role === "Student") {
+
+        loadStudents();
+        loadMarks();
+        loadPredictions();
+
+    }
+
+}, [isAuthenticated, currentUser]);
 
 useEffect(() => {
-    loadStudents(filters);
-}, [filters]);
+
+    if (
+        currentUser?.role === "Teacher" ||
+        currentUser?.role === "Admin"
+    ) {
+        loadStudents(filters);
+    }
+
+}, [filters, currentUser]);
 
 useEffect(() => {
-  const token = localStorage.getItem("token");
-  const user = localStorage.getItem("user");
 
-  if (token && user) {
-    setIsAuthenticated(true);
-    setCurrentUser(JSON.parse(user));
-    setActivePage("dashboard");
-  }
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+
+    if (token && user) {
+
+        api.defaults.headers.common["Authorization"] =
+            `Bearer ${token}`;
+
+        setIsAuthenticated(true);
+        setCurrentUser(JSON.parse(user));
+        setActivePage("dashboard");
+
+    }
+
 }, []);
 
 
@@ -293,6 +393,74 @@ const addStudent = async (newStudentData) => {
   }
 };
 
+const addTeacher = async (teacherData) => {
+    try {
+
+        await api.post("/Teachers", {
+            fullName: teacherData.fullName,
+            email: teacherData.email,
+            department: teacherData.department,
+            title: teacherData.title
+        });
+
+        await loadTeachers();
+
+    } catch (err) {
+
+        console.error(err);
+        alert("Unable to add teacher.");
+
+    }
+};
+
+const updateTeacher = async (id, teacherData) => {
+    try {
+
+        await api.put(`/Teachers/${id}`, {
+            fullName: teacherData.fullName,
+            email: teacherData.email,
+            department: teacherData.department,
+            title: teacherData.title
+        });
+
+        await loadTeachers();
+
+    } catch (err) {
+
+        console.error(err);
+        alert("Unable to update teacher.");
+
+    }
+};
+
+const deleteTeacher = async (id) => {
+    try {
+
+        await api.delete(`/Teachers/${id}`);
+
+        await loadTeachers();
+
+    } catch (err) {
+
+        console.error(err);
+        alert("Unable to delete teacher.");
+
+    }
+};
+
+const resetTeacherPassword = async (id) => {
+    try {
+
+        await api.put(`/Teachers/${id}/reset-password`);
+
+    } catch (err) {
+
+        console.error(err);
+        alert("Unable to reset password.");
+
+    }
+};
+
   const markAttendance = async (records, department, subject, date) => {
   try {
 
@@ -344,18 +512,13 @@ const autoCalculateGrades = async () => {
   }
 };
 
-const loginUser = async (email, password, role) => {
+const loginUser = async (email, password) => {
 
     try {
 
         const response = await api.post("/Auth/login", {
-
             email,
-
-            password,
-
-            role
-
+            password
         });
 
         const user = response.data;
@@ -382,9 +545,19 @@ const loginUser = async (email, password, role) => {
 
         });
 
+        if (user.role === "Admin") {
+
+            console.log("Admin detected");
+            await loadAdminDashboard();
+            console.log("Dashboard loaded");
+
+        }
+
         setIsAuthenticated(true);
 
         setActivePage("dashboard");
+
+        return user;
 
     } catch (err) {
 
@@ -446,7 +619,22 @@ const loginUser = async (email, password, role) => {
       mlApiConfig,
       setMlApiConfig,
       loginUser,
-      logoutUser
+      logoutUser,
+      teachers,
+      setTeachers,
+
+      loadTeachers,
+
+      addTeacher,
+      updateTeacher,
+      deleteTeacher,
+      resetTeacherPassword,
+
+      selectedTeacher,
+      setSelectedTeacher,
+
+      adminDashboard,
+      loadAdminDashboard,
     }}>
       {children}
     </AppContext.Provider>

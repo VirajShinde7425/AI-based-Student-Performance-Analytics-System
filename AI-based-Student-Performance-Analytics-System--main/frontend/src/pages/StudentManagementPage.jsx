@@ -90,7 +90,7 @@ export const StudentManagementPage = () => {
           >
             <UserPlus className="w-4 h-4" /> Enroll Student
           </button>
-          <button
+          {/* <button
             onClick={() => setActiveModal('uploadAttendance')}
             className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
           >
@@ -101,7 +101,7 @@ export const StudentManagementPage = () => {
             className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
           >
             <Download className="w-4 h-4" /> Export Excel
-          </button>
+          </button> */}
         </div>
       </div>
 

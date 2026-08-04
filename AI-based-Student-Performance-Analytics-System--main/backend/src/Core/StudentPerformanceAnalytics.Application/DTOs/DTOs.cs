@@ -320,3 +320,57 @@ public record ChangePasswordResponseDto(
     bool Success,
     string Message
 );
+
+public class CreateTeacherDto
+{
+    public string FullName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Department { get; set; } = string.Empty;
+
+    public string Title { get; set; } = string.Empty;
+}
+
+public class TeacherSummaryDto
+{
+    public Guid Id { get; set; }
+
+    public string FullName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Department { get; set; } = string.Empty;
+
+    public string Title { get; set; } = string.Empty;
+
+    public string AvatarUrl { get; set; } = string.Empty;
+}
+
+public class TeacherDetailDto
+{
+    public Guid Id { get; set; }
+
+    public string FullName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Department { get; set; } = string.Empty;
+
+    public string Title { get; set; } = string.Empty;
+
+    public string AvatarUrl { get; set; } = string.Empty;
+}
+
+public class AdminDashboardDto
+{
+    public int TotalTeachers { get; set; }
+
+    public int TotalStudents { get; set; }
+
+    public int TotalDepartments { get; set; }
+
+    public int TotalPredictions { get; set; }
+
+    public string SystemStatus { get; set; } = "Online";
+}

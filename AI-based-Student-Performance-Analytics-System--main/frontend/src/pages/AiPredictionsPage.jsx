@@ -81,7 +81,7 @@ const {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-extrabold tracking-tight">AI Early Warning & Performance Prediction Engine</h1>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/30 border border-emerald-400/40 text-emerald-200">
-                Random Forest + XGBoost Regressor
+                Random Forest + Linear Regression
               </span>
             </div>
             <p className="text-xs text-teal-100 mt-0.5">
@@ -91,12 +91,12 @@ const {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          {/* <button
             onClick={() => setActiveModal('mlConfig')}
             className="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white border border-white/20 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all"
           >
             <Server className="w-4 h-4" /> API Endpoint Config
-          </button>
+          </button> */}
           <button
             onClick={handleRunInference}
             disabled={isRefreshing}
@@ -171,9 +171,9 @@ const {
           <div>
             <span className="text-xs font-bold uppercase text-slate-400 block">Likely Top Performers</span>
             <span className="text-2xl font-black text-indigo-600">
-              {predictionData
+              {/* {predictionData
                 ? `${predictionData.likelyTopPerformersCount} Candidates`
-                : "..."}
+                : "..."} */}
             </span>
             <span className="text-[10px] text-slate-500 block mt-0.5">Predicted GPA &gt; 3.80</span>
           </div>
@@ -272,7 +272,7 @@ const {
               <h4 className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase">Needs Extra Classes</h4>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              6 students flagged for low scores in Machine Learning theory. Scheduled for Saturday remedial workshops.
+              Shows students flagged for low scores in Machine Learning theory. Scheduled for Saturday remedial workshops.
             </p>
           </div>
 
@@ -282,7 +282,7 @@ const {
               <h4 className="text-xs font-bold text-red-800 dark:text-red-300 uppercase">Improve Attendance</h4>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              18 students below 75% attendance. Automatic guardian SMS notifications dispatched.
+              Shows students below 75% attendance. Automatic guardian SMS notifications dispatched.
             </p>
           </div>
 
@@ -292,7 +292,7 @@ const {
               <h4 className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase">Likely to Improve</h4>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              24 students demonstrating positive GPA gradient over the past 3 semesters.
+              Shows students demonstrating positive GPA gradient over the past 3 semesters.
             </p>
           </div>
 
@@ -302,7 +302,7 @@ const {
               <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase">Excellent Progress</h4>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              42 top candidates nominated for research assistantships & honors projects.
+              Shows top candidates nominated for research assistantships & honors projects.
             </p>
           </div>
         </div>

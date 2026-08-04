@@ -21,6 +21,8 @@ import { MyProfilePage } from "./pages/MyProfilePage";
 import { StudentAttendancePage } from "./pages/StudentAttendancePage";
 import { StudentMarksPage } from "./pages/StudentMarksPage";
 import { StudentPredictionsPage } from "./pages/StudentPredictionsPage";
+import { AdminDashboardPage } from "./pages/AdminDashboardPage";
+import { TeacherManagementPage } from "./pages/TeacherManagementPage";
 
 // Modals
 import { AddStudentModal } from './components/modals/AddStudentModal';
@@ -30,6 +32,8 @@ import { UploadMarksModal } from './components/modals/UploadMarksModal';
 import { GenerateReportModal } from './components/modals/GenerateReportModal';
 import { MlApiConfigModal } from './components/modals/MlApiConfigModal';
 import { EditStudentModal } from './components/modals/EditStudentModal';
+import { AddTeacherModal } from "./components/modals/AddTeacherModal";
+import { EditTeacherModal } from "./components/modals/EditTeacherModal";
 
 const AppContent = () => {
   const { isAuthenticated, activePage, sidebarCollapsed, currentUser } = useApp();
@@ -53,32 +57,34 @@ const AppContent = () => {
         }`}
       >
         <div className="max-w-7xl mx-auto">
-          {activePage === "dashboard" &&
-          (
-              currentUser.role === "Teacher"
-                  ? <DashboardPage />
-                  : <StudentDashboardPage />
+          {activePage === "dashboard" && (
+              currentUser.role === "Admin"
+                  ? <AdminDashboardPage />
+                  : currentUser.role === "Teacher"
+                      ? <DashboardPage />
+                      : <StudentDashboardPage />
           )}
           {activePage === "profile" && <MyProfilePage />}
           {activePage === 'students' && <StudentManagementPage />}
+          {activePage === "teachers" && <TeacherManagementPage />}
           {activePage === "attendance" &&
           (
-              currentUser?.role === "Teacher"
-                  ? <AttendancePage />
-                  : <StudentAttendancePage />
+              currentUser?.role === "Student"
+                  ? <StudentAttendancePage />
+                  : <AttendancePage />
           )}
           {activePage === "marks" &&
           (
-              currentUser?.role === "Teacher"
-                  ? <MarksManagementPage />
-                  : <StudentMarksPage />
+              currentUser?.role === "Student"
+                  ? <StudentMarksPage />
+                  : <MarksManagementPage />
           )}
           {activePage === 'analytics' && <AnalyticsPage />}
           {activePage === "predictions" &&
           (
-              currentUser?.role === "Teacher"
-                  ? <AiPredictionsPage />
-                  : <StudentPredictionsPage />
+              currentUser?.role === "Student"
+                  ? <StudentPredictionsPage />
+                  : <AiPredictionsPage />
           )}
           {activePage === 'reports' && <ReportsPage />}
           {activePage === 'settings' && <SettingsPage />}
@@ -93,6 +99,8 @@ const AppContent = () => {
       <UploadMarksModal />
       <GenerateReportModal />
       <MlApiConfigModal />
+      <AddTeacherModal />
+      <EditTeacherModal />
     </div>
   );
 };

@@ -59,14 +59,14 @@ export const AnalyticsPage = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <button className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-slate-700">
             <SlidersHorizontal className="w-3.5 h-3.5" /> Configure Slicers
           </button>
           <button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 flex items-center gap-1.5 transition-all">
             <Download className="w-3.5 h-3.5" /> Export PBIX Data
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Top 5 Power BI KPI Cards */}

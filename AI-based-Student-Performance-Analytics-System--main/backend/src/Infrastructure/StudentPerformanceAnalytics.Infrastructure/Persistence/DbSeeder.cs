@@ -30,19 +30,19 @@ public static class DbSeeder
         };
 
 
-        var student = new User
+        var admin = new User
         {
-            Email = "robert.vance@institution.edu",
+            Email = "admin@institution.edu",
             FullName = "Dr. Robert Vance",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
-            Role = UserRole.Student,
+            Role = UserRole.Admin,
             Department = "Academic Affairs",
             Title = "Dean of Academic Affairs",
             AvatarUrl = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80"
         };
 
 
-        await context.Users.AddRangeAsync(teacher, student);
+        await context.Users.AddRangeAsync(teacher, admin);
         await context.SaveChangesAsync();
 
         // Seed Departments
