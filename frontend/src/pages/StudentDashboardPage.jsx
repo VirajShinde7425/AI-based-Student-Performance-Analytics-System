@@ -7,7 +7,7 @@ export const StudentDashboardPage = () => {
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const response = await api.get("/my/dashboard");
+        const response = await api.get("/api/My/dashboard");
         setDashboard(response.data);
       } catch (err) {
         console.error(err);

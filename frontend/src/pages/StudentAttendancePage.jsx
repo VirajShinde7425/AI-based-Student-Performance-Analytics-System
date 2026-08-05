@@ -8,7 +8,7 @@ export const StudentAttendancePage = () => {
   useEffect(() => {
     const loadAttendance = async () => {
       try {
-        const response = await api.get("/my/attendance");
+        const response = await api.get("/api/My/attendance");
         setAttendance(response.data);
       } catch (err) {
         console.error(err);

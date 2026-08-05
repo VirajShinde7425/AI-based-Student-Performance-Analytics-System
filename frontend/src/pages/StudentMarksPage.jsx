@@ -7,7 +7,7 @@ export const StudentMarksPage = () => {
   useEffect(() => {
     const loadMarks = async () => {
       try {
-        const response = await api.get("/my/marks");
+        const response = await api.get("/api/My/marks");
         setMarks(response.data);
       } catch (err) {
         console.error(err);

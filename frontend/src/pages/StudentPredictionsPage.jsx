@@ -13,7 +13,7 @@ export const StudentPredictionsPage = () => {
   useEffect(() => {
     const loadPredictions = async () => {
       try {
-        const response = await api.get("/my/predictions");
+        const response = await api.get("/api/My/predictions");
         setPredictions(response.data);
       } catch (err) {
         console.error(err);

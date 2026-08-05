@@ -31,7 +31,7 @@ export const ReportsPage = () => {
 
 const loadReports = async () => {
     try {
-        const response = await api.get("/Reports/dashboard");
+        const response = await api.get("/api/Reports/dashboard");
         setReportData(response.data);
     }
     catch (err) {
@@ -92,7 +92,7 @@ const downloadExcel = async () => {
         );
 
         const response = await api.get(
-            "/Reports/export/excel",
+            "/api/Reports/export/excel",
             {
                 responseType: "blob"
             }

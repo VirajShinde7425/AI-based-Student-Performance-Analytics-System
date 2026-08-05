@@ -61,7 +61,7 @@ export const SettingsPage = () => {
 
   const loadSettings = async () => {
     try {
-        const response = await api.get("/Settings");
+        const response = await api.get("/api/Settings");
 
         const data = response.data;
 
@@ -133,7 +133,7 @@ useEffect(() => {
 
     try {
 
-        await api.post("/Settings", {
+        await api.post("/api/Settings", {
 
             instituteName: institute.name,
 
@@ -189,7 +189,7 @@ useEffect(() => {
     try
     {
         const response = await api.post(
-              "/Auth/change-password",
+              "/api/Auth/change-password",
               {
                   currentPassword: passwords.current,
                   newPassword: passwords.newPass,

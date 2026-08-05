@@ -33,7 +33,7 @@ export const GenerateReportModal = () => {
         );
 
         const response = await api.get(
-            "/Reports/export/excel",
+            "/api/Reports/export/excel",
             {
                 responseType: "blob"
             }

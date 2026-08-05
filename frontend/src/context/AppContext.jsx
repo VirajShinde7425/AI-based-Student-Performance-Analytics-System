@@ -68,7 +68,7 @@ export const AppProvider = ({ children }) => {
     try {
 
         const response =
-            await api.get("/Admin/dashboard");
+            await api.get("/api/Admin/dashboard");
 
         console.log("Admin API Response:", response.data);
 
@@ -89,7 +89,7 @@ export const AppProvider = ({ children }) => {
   const loadStudents = async (filterData = filters) => {
   try {
 
-    const response = await api.get("/Students", {
+    const response = await api.get("/api/Students", {
       params: {
         search: filterData.searchQuery || undefined,
         department:
@@ -183,7 +183,7 @@ const mappedStudents = apiStudents.map(student => ({
     const loadTeachers = async () => {
     try {
 
-        const response = await api.get("/Teachers");
+        const response = await api.get("/api/Teachers");
 
         const mappedTeachers = response.data.map(t => ({
             id: t.id,
@@ -211,7 +211,7 @@ const mappedStudents = apiStudents.map(student => ({
 const loadDashboard = async () => {
     try {
 
-        const response = await api.get("/Analytics/powerbi-summary");
+        const response = await api.get("/api/Analytics/powerbi-summary");
 
         setDashboardData(response.data);
 
@@ -223,7 +223,7 @@ const loadDashboard = async () => {
 const loadPredictions = async () => {
     try {
 
-        const response = await api.get("/Predictions");
+        const response = await api.get("/api/Predictions");
 
         setPredictionData(response.data);
 
@@ -234,7 +234,7 @@ const loadPredictions = async () => {
 
 const runInference = async () => {
   try {
-    await api.post("/Predictions/run-inference");
+    await api.post("/api/Predictions/run-inference");
 
     // Reload data after prediction completes
     await loadStudents();
@@ -250,7 +250,7 @@ const runInference = async () => {
 const loadMarks = async () => {
     try {
 
-        const response = await api.get("/Marks");
+        const response = await api.get("/api/Marks");
 
         setMarks(response.data);
 
@@ -353,7 +353,7 @@ const addStudent = async (newStudentData) => {
       guardianPhone: newStudentData.guardianPhone
 };
 
-    await api.post("/Students", dto);
+    await api.post("/api/Students", dto);
 
     await loadStudents();
 
@@ -398,7 +398,7 @@ const addStudent = async (newStudentData) => {
 const addTeacher = async (teacherData) => {
     try {
 
-        await api.post("/Teachers", {
+        await api.post("/api/Teachers", {
             fullName: teacherData.fullName,
             email: teacherData.email,
             department: teacherData.department,
@@ -473,7 +473,7 @@ const resetTeacherPassword = async (id) => {
       records: records
     };
 
-    await api.post("/Attendance/batch-mark", dto);
+    await api.post("/api/Attendance/batch-mark", dto);
 
   } catch (err) {
     console.error(err);
@@ -484,7 +484,7 @@ const resetTeacherPassword = async (id) => {
 const saveMarks = async (marksList) => {
   try {
 
-    await api.post("/Marks/save", marksList);
+    await api.post("/api/Marks/save", marksList);
 
     await Promise.all([
     loadStudents(),
@@ -501,7 +501,7 @@ const saveMarks = async (marksList) => {
 const autoCalculateGrades = async () => {
   try {
 
-    await api.post("/Marks/calculate-grades");
+    await api.post("/api/Marks/calculate-grades");
 
     await loadStudents();
 

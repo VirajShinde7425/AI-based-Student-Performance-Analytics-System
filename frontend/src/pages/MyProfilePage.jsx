@@ -7,7 +7,7 @@ export const MyProfilePage = () => {
     useEffect(() => {
         const loadProfile = async () => {
             try {
-                const response = await api.get("/my/profile");
+                const response = await api.get("/api/My/profile");
                 setProfile(response.data);
             } catch (err) {
                 console.error(err);
