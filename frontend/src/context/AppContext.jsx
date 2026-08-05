@@ -518,7 +518,7 @@ const loginUser = async (email, password) => {
 
     try {
 
-        const response = await api.post("/Auth/login", {
+        const response = await api.post("/api/Auth/login", {
             email,
             password
         });
