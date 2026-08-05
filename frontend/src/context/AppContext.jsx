@@ -111,7 +111,9 @@ export const AppProvider = ({ children }) => {
       }
     });
 
-
+    console.log("Full Response:", response);
+console.log("Response Data:", response.data);
+console.log("Is Array:", Array.isArray(response.data));
     const apiStudents = response.data;
 
 

@@ -60,8 +60,7 @@ public interface IFlaskMlApiClient
 {
     Task<AiPrediction> PredictStudentPerformanceAsync(
     Student student,
-    SubjectMark marks,
-    string endpointUrl);
+    SubjectMark marks);
 }
 
 

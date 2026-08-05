@@ -38,6 +38,33 @@ export const validators = {
     return "";
   },
 
+  name: (value) => {
+  const regex = /^[A-Za-z\s.]+$/;
+
+  if (!regex.test(value))
+    return "Only alphabets, spaces and '.' are allowed.";
+
+  return "";
+},
+
+alphaNumeric: (value, fieldName = "Field") => {
+  const regex = /^[A-Za-z0-9]+$/;
+
+  if (!regex.test(value))
+    return `${fieldName} can contain only letters and numbers.`;
+
+  return "";
+},
+
+registrationId: (value) => {
+  const regex = /^STU-\d{4}-\d{3}$/;
+
+  if (!regex.test(value))
+    return "Registration ID must be in STU-2026-001 format.";
+
+  return "";
+},
+
   password: (value) => {
     const regex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=]).{8,}$/;
@@ -65,5 +92,14 @@ export const validators = {
       return `${fieldName} does not match.`;
 
     return "";
-  }
+  },
+
+  numeric: (value, fieldName = "Field") => {
+  const regex = /^[0-9]+$/;
+
+  if (!regex.test(value))
+    return `${fieldName} must contain only numbers.`;
+
+  return "";
+},
 };

@@ -3,17 +3,33 @@ import { validators } from "./validators";
 export const validateStudent = (student) => {
   const errors = {};
 
+errors.registrationId =
+  validators.required(student.registrationId, "Registration ID");
+
+if (!errors.registrationId)
   errors.registrationId =
-    validators.required(student.registrationId, "Registration ID");
+    validators.registrationId(student.registrationId);
 
+errors.rollNumber =
+  validators.required(student.rollNumber, "Roll Number");
+
+if (!errors.rollNumber)
   errors.rollNumber =
-    validators.required(student.rollNumber, "Roll Number");
+    validators.numeric(
+      student.rollNumber,
+      "Roll Number"
+    );
 
+errors.fullName =
+  validators.required(student.fullName, "Full Name");
+
+if (!errors.fullName)
   errors.fullName =
-    validators.required(student.fullName, "Full Name");
+    validators.minLength(student.fullName, 3);
 
-  if (!errors.fullName)
-    errors.fullName = validators.minLength(student.fullName, 3);
+if (!errors.fullName)
+  errors.fullName =
+    validators.name(student.fullName);
 
   errors.email =
     validators.required(student.email, "Email");
@@ -30,8 +46,12 @@ export const validateStudent = (student) => {
   errors.division =
     validators.required(student.division, "Division");
 
+errors.guardianName =
+  validators.required(student.guardianName, "Guardian Name");
+
+if (!errors.guardianName)
   errors.guardianName =
-    validators.required(student.guardianName, "Guardian Name");
+    validators.name(student.guardianName);
 
   errors.guardianPhone =
     validators.required(student.guardianPhone, "Guardian Phone");
