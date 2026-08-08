@@ -378,69 +378,87 @@ public async Task RequestPasswordResetAsync(string email)
             return false;
         }
     }
+private async Task SendResetEmailAsync(
+    string recipientEmail,
+    string recipientName,
+    string resetLink)
+{
+    var host = Environment.GetEnvironmentVariable("SMTP_HOST");
+    var portValue = Environment.GetEnvironmentVariable("SMTP_PORT");
+    var username = Environment.GetEnvironmentVariable("SMTP_USERNAME");
+    var password = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
 
-    private async Task SendResetEmailAsync(
-        string recipientEmail,
-        string recipientName,
-        string resetLink)
+    var fromEmail =
+        Environment.GetEnvironmentVariable("SMTP_FROM_EMAIL")
+        ?? username;
+
+    var fromName =
+        Environment.GetEnvironmentVariable("SMTP_FROM_NAME")
+        ?? "EduMetrics AI";
+
+    if (string.IsNullOrWhiteSpace(host) ||
+        string.IsNullOrWhiteSpace(portValue) ||
+        string.IsNullOrWhiteSpace(username) ||
+        string.IsNullOrWhiteSpace(password) ||
+        string.IsNullOrWhiteSpace(fromEmail))
     {
-        var host = Environment.GetEnvironmentVariable("SMTP_HOST");
-        var portValue = Environment.GetEnvironmentVariable("SMTP_PORT");
-        var username = Environment.GetEnvironmentVariable("SMTP_USERNAME");
-        var password = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
-        var fromEmail =
-            Environment.GetEnvironmentVariable("SMTP_FROM_EMAIL")
-            ?? username;
-        var fromName =
-            Environment.GetEnvironmentVariable("SMTP_FROM_NAME")
-            ?? "EduMetrics AI";
+        throw new InvalidOperationException(
+            "Password reset email is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL.");
+    }
 
-        if (string.IsNullOrWhiteSpace(host) ||
-            string.IsNullOrWhiteSpace(portValue) ||
-            string.IsNullOrWhiteSpace(username) ||
-            string.IsNullOrWhiteSpace(password) ||
-            string.IsNullOrWhiteSpace(fromEmail))
-        {
-            throw new InvalidOperationException(
-                "Password reset email is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL.");
-        }
+    if (!int.TryParse(portValue, out var port))
+        throw new InvalidOperationException("SMTP_PORT must be a valid number.");
 
-        if (!int.TryParse(portValue, out var port))
-            throw new InvalidOperationException("SMTP_PORT must be a valid number.");
+    using var message = new MailMessage
+    {
+        From = new MailAddress(fromEmail, fromName),
+        Subject = "EduMetrics AI - Reset your password",
+        IsBodyHtml = true,
+        Body = $"""
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px">
+                  <h2 style="color:#2563eb">EduMetrics AI</h2>
+                  <p>Hello {System.Net.WebUtility.HtmlEncode(recipientName)},</p>
+                  <p>We received a request to reset your EduMetrics AI password.</p>
+                  <p>This link will expire in <strong>30 minutes</strong>.</p>
+                  <p>
+                    <a href="{System.Net.WebUtility.HtmlEncode(resetLink)}"
+                       style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px">
+                      Reset Password
+                    </a>
+                  </p>
+                  <p>If you did not request this, you can safely ignore this email.</p>
+                </div>
+                """
+    };
 
-        using var message = new MailMessage
-        {
-            From = new MailAddress(fromEmail, fromName),
-            Subject = "EduMetrics AI - Reset your password",
-            IsBodyHtml = true,
-            Body = $"""
-                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px">
-                      <h2 style="color:#2563eb">EduMetrics AI</h2>
-                      <p>Hello {System.Net.WebUtility.HtmlEncode(recipientName)},</p>
-                      <p>We received a request to reset your EduMetrics AI password.</p>
-                      <p>This link will expire in <strong>30 minutes</strong>.</p>
-                      <p>
-                        <a href="{System.Net.WebUtility.HtmlEncode(resetLink)}"
-                           style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px">
-                          Reset Password
-                        </a>
-                      </p>
-                      <p>If you did not request this, you can safely ignore this email.</p>
-                    </div>
-                    """
-        };
+    message.To.Add(new MailAddress(recipientEmail));
 
-        message.To.Add(new MailAddress(recipientEmail));
+    Console.WriteLine($"SMTP: host configured = {!string.IsNullOrWhiteSpace(host)}");
+    Console.WriteLine($"SMTP: port = {port}");
+    Console.WriteLine($"SMTP: username configured = {!string.IsNullOrWhiteSpace(username)}");
+    Console.WriteLine($"SMTP: password configured = {!string.IsNullOrWhiteSpace(password)}");
+    Console.WriteLine($"SMTP: from email configured = {!string.IsNullOrWhiteSpace(fromEmail)}");
 
+    try
+    {
         using var smtp = new SmtpClient(host, port)
         {
             EnableSsl = true,
             Credentials = new NetworkCredential(username, password)
         };
 
-        await smtp.SendMailAsync(message);
-    }
+        Console.WriteLine("SMTP: attempting to send email...");
 
+        await smtp.SendMailAsync(message);
+
+        Console.WriteLine("SMTP: email sent successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"SMTP ERROR: {ex}");
+        throw;
+    }
+}
     private static string PasswordFingerprint(string passwordHash)
     {
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(passwordHash));
