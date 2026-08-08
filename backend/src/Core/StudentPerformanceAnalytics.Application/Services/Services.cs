@@ -213,8 +213,9 @@ public class AuthService : IAuthService
             true,
             "Password changed successfully.");
     }
-
-    public async Task RequestPasswordResetAsync(string email)
+public async Task RequestPasswordResetAsync(string email)
+{
+    try
     {
         if (string.IsNullOrWhiteSpace(email))
             return;
@@ -226,22 +227,36 @@ public class AuthService : IAuthService
 
         var user = users.FirstOrDefault();
 
-        // Do not reveal whether the account exists.
         if (user == null)
             return;
 
+        Console.WriteLine("Forgot password: user found.");
+
         var token = CreateResetToken(user);
+
+        Console.WriteLine("Forgot password: reset token created.");
 
         var frontendUrl =
             Environment.GetEnvironmentVariable("FRONTEND_URL")
             ?? "http://localhost:5173";
 
+        Console.WriteLine($"Forgot password: FRONTEND_URL configured = {!string.IsNullOrWhiteSpace(frontendUrl)}");
+
         var resetLink =
             $"{frontendUrl.TrimEnd('/')}/#/reset-password?token={Uri.EscapeDataString(token)}";
 
-        await SendResetEmailAsync(user.Email, user.FullName, resetLink);
-    }
+        Console.WriteLine("Forgot password: reset link created.");
 
+        await SendResetEmailAsync(user.Email, user.FullName, resetLink);
+
+        Console.WriteLine("Forgot password: email sent successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"FORGOT PASSWORD ERROR: {ex}");
+        throw;
+    }
+}
     public async Task<bool> ResetPasswordAsync(
         string token,
         string newPassword,
