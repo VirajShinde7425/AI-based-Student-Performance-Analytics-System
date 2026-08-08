@@ -321,6 +321,14 @@ public record ChangePasswordResponseDto(
     string Message
 );
 
+public record ForgotPasswordRequestDto(string Email);
+
+public record ResetPasswordRequestDto(
+    string Token,
+    string NewPassword,
+    string ConfirmPassword
+);
+
 public class CreateTeacherDto
 {
     public string FullName { get; set; } = string.Empty;

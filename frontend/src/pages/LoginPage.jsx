@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import { BrainCircuit, Lock, Mail, ShieldCheck, Sparkles, ArrowRight, UserCheck } from 'lucide-react';
+import api from '../services/api';
+import { BrainCircuit, Lock, Mail, Sparkles, ArrowRight, UserCheck, X, Send } from 'lucide-react';
 
 export const LoginPage = () => {
   const { loginUser } = useApp();
@@ -9,6 +10,9 @@ export const LoginPage = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   // const [role, setRole] = useState("Teacher");
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -53,6 +57,42 @@ export const LoginPage = () => {
 
   }
 };
+
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+
+    if (!forgotEmail.trim()) {
+      addToast("Validation Error", "Please enter your email address.", "warning");
+      return;
+    }
+
+    try {
+      setForgotLoading(true);
+
+      await api.post("/api/Auth/forgot-password", {
+        email: forgotEmail.trim()
+      });
+
+      addToast(
+        "Check Your Email",
+        "If an account exists for this email, a password reset link has been sent.",
+        "success"
+      );
+
+      setShowForgotPassword(false);
+      setForgotEmail("");
+    } catch (err) {
+      addToast(
+        "Unable to Send Reset Link",
+        err.response?.data?.message ||
+          "We could not send the reset email. Please try again later.",
+        "error"
+      );
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
@@ -194,9 +234,16 @@ export const LoginPage = () => {
                   />
                   <span>Remember session</span>
                 </label>
-                <a href="#" onClick={(e) => { e.preventDefault(); addToast('Reset Link Sent', 'Password reset instructions mailed to your inbox.', 'info'); }} className="font-semibold text-primary-600 dark:text-primary-400 hover:underline">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotEmail(email);
+                    setShowForgotPassword(true);
+                  }}
+                  className="font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                >
                   Forgot Password?
-                </a>
+                </button>
               </div>
 
               <button
@@ -208,6 +255,60 @@ export const LoginPage = () => {
               </button>
             </form>
           </div>
+
+          {showForgotPassword && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                      Reset your password
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Enter your registered email and we&apos;ll send you a secure reset link.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Registered Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="email"
+                        required
+                        autoFocus
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <Send className="w-4 h-4" />
+                    {forgotLoading ? "Sending..." : "Send Reset Link"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* Quick Demo Bypass */}
           <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">

@@ -56,7 +56,7 @@ Thumbs.db
 
 frontend/.env
 backend/**/appsettings.Development.json
-
+backend/**/appsettings.json
 ml-service/**/.env
 
 .env

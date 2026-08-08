@@ -8,6 +8,7 @@ import { TopNav } from './components/layout/TopNav';
 
 // Pages
 import { LoginPage } from './pages/LoginPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { StudentManagementPage } from './pages/StudentManagementPage';
 import { AttendancePage } from './pages/AttendancePage';
@@ -37,6 +38,13 @@ import { EditTeacherModal } from "./components/modals/EditTeacherModal";
 
 const AppContent = () => {
   const { isAuthenticated, activePage, sidebarCollapsed, currentUser } = useApp();
+
+  const isResetPasswordRoute =
+    window.location.hash.startsWith("#/reset-password");
+
+  if (isResetPasswordRoute) {
+    return <ResetPasswordPage />;
+  }
 
   if (!isAuthenticated || activePage === 'login') {
     return <LoginPage />;

@@ -1,4 +1,9 @@
 using System;
+using System.Net;
+using System.Net.Mail;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,6 +22,10 @@ public interface IAuthService
     Task<AuthResponseDto> LoginAsync(LoginRequestDto request);
 
     Task<ChangePasswordResponseDto> ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request);
+
+    Task RequestPasswordResetAsync(string email);
+
+    Task<bool> ResetPasswordAsync(string token, string newPassword, string confirmPassword);
 }
 
 public interface IStudentService
@@ -121,7 +130,11 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
     {
-        var users = await _unitOfWork.Users.FindAsync(u => u.Email == request.Email);
+        var email = request.Email.Trim();
+
+        var users = await _unitOfWork.Users.FindAsync(
+            u => u.Email.ToLower() == email.ToLower());
+
         var user = users.FirstOrDefault();
 
         if (user == null)
@@ -140,6 +153,7 @@ public class AuthService : IAuthService
         }
 
         var token = _jwtService.GenerateToken(user);
+
         return new AuthResponseDto(
             token,
             user.FullName,
@@ -150,19 +164,17 @@ public class AuthService : IAuthService
             user.Title,
             user.StudentId
         );
-
     }
 
-    public async Task<ChangePasswordResponseDto> ChangePasswordAsync(Guid userId, ChangePasswordRequestDto request)
+    public async Task<ChangePasswordResponseDto> ChangePasswordAsync(
+        Guid userId,
+        ChangePasswordRequestDto request)
     {
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
 
         if (user == null)
         {
-            return new ChangePasswordResponseDto(
-                false,
-                "User not found."
-            );
+            return new ChangePasswordResponseDto(false, "User not found.");
         }
 
         bool validPassword = BCrypt.Net.BCrypt.Verify(
@@ -172,18 +184,14 @@ public class AuthService : IAuthService
 
         if (!validPassword)
         {
-            return new ChangePasswordResponseDto(
-                false,
-                "Current password is incorrect."
-            );
+            return new ChangePasswordResponseDto(false, "Current password is incorrect.");
         }
 
         if (request.NewPassword != request.ConfirmPassword)
         {
             return new ChangePasswordResponseDto(
                 false,
-                "New password and confirmation password do not match."
-            );
+                "New password and confirmation password do not match.");
         }
 
         if (BCrypt.Net.BCrypt.Verify(
@@ -192,23 +200,267 @@ public class AuthService : IAuthService
         {
             return new ChangePasswordResponseDto(
                 false,
-                "New password must be different from the current password."
-            );
+                "New password must be different from the current password.");
         }
 
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(
-            request.NewPassword
-        );
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Users.Update(user);
-
         await _unitOfWork.CompleteAsync();
 
         return new ChangePasswordResponseDto(
             true,
-            "Password changed successfully."
-        );
+            "Password changed successfully.");
+    }
 
+    public async Task RequestPasswordResetAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return;
+
+        var normalizedEmail = email.Trim();
+
+        var users = await _unitOfWork.Users.FindAsync(
+            u => u.Email.ToLower() == normalizedEmail.ToLower());
+
+        var user = users.FirstOrDefault();
+
+        // Do not reveal whether the account exists.
+        if (user == null)
+            return;
+
+        var token = CreateResetToken(user);
+
+        var frontendUrl =
+            Environment.GetEnvironmentVariable("FRONTEND_URL")
+            ?? "http://localhost:5173";
+
+        var resetLink =
+            $"{frontendUrl.TrimEnd('/')}/#/reset-password?token={Uri.EscapeDataString(token)}";
+
+        await SendResetEmailAsync(user.Email, user.FullName, resetLink);
+    }
+
+    public async Task<bool> ResetPasswordAsync(
+        string token,
+        string newPassword,
+        string confirmPassword)
+    {
+        if (string.IsNullOrWhiteSpace(token) ||
+            string.IsNullOrWhiteSpace(newPassword) ||
+            newPassword != confirmPassword)
+        {
+            return false;
+        }
+
+        if (newPassword.Length < 8 ||
+            !newPassword.Any(char.IsUpper) ||
+            !newPassword.Any(char.IsLower) ||
+            !newPassword.Any(char.IsDigit) ||
+            !newPassword.Any(c => "@$!%*?&#^()_-+=".Contains(c)))
+        {
+            return false;
+        }
+
+        if (!TryValidateResetToken(token, out var userId))
+            return false;
+
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
+        if (user == null)
+            return false;
+
+        // The token contains a fingerprint of the old password hash.
+        // Therefore, a reset token cannot be reused after a successful reset.
+        if (!TryValidateResetToken(token, out _, user))
+            return false;
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(user);
+        await _unitOfWork.CompleteAsync();
+
+        return true;
+    }
+
+    private string CreateResetToken(User user)
+    {
+        var expiresAt = DateTimeOffset.UtcNow
+            .AddMinutes(30)
+            .ToUnixTimeSeconds();
+
+        var payload = new
+        {
+            uid = user.Id,
+            exp = expiresAt,
+            pwd = PasswordFingerprint(user.PasswordHash)
+        };
+
+        var payloadJson = JsonSerializer.Serialize(payload);
+        var payloadPart = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadJson));
+        var signature = Sign(payloadPart);
+
+        return $"{payloadPart}.{signature}";
+    }
+
+    private bool TryValidateResetToken(
+        string token,
+        out Guid userId,
+        User? currentUser = null)
+    {
+        userId = Guid.Empty;
+
+        var parts = token.Split('.');
+        if (parts.Length != 2)
+            return false;
+
+        var expectedSignature = Sign(parts[0]);
+
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(expectedSignature),
+                Encoding.UTF8.GetBytes(parts[1])))
+        {
+            return false;
+        }
+
+        try
+        {
+            var json = Encoding.UTF8.GetString(Base64UrlDecode(parts[0]));
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+
+            if (!root.TryGetProperty("uid", out var uidElement) ||
+                !Guid.TryParse(uidElement.GetString(), out userId))
+            {
+                userId = Guid.Empty;
+                return false;
+            }
+
+            if (!root.TryGetProperty("exp", out var expElement) ||
+                expElement.GetInt64() < DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            {
+                userId = Guid.Empty;
+                return false;
+            }
+
+            if (currentUser != null)
+            {
+                if (!root.TryGetProperty("pwd", out var pwdElement) ||
+                    pwdElement.GetString() != PasswordFingerprint(currentUser.PasswordHash))
+                {
+                    userId = Guid.Empty;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        catch
+        {
+            userId = Guid.Empty;
+            return false;
+        }
+    }
+
+    private async Task SendResetEmailAsync(
+        string recipientEmail,
+        string recipientName,
+        string resetLink)
+    {
+        var host = Environment.GetEnvironmentVariable("SMTP_HOST");
+        var portValue = Environment.GetEnvironmentVariable("SMTP_PORT");
+        var username = Environment.GetEnvironmentVariable("SMTP_USERNAME");
+        var password = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
+        var fromEmail =
+            Environment.GetEnvironmentVariable("SMTP_FROM_EMAIL")
+            ?? username;
+        var fromName =
+            Environment.GetEnvironmentVariable("SMTP_FROM_NAME")
+            ?? "EduMetrics AI";
+
+        if (string.IsNullOrWhiteSpace(host) ||
+            string.IsNullOrWhiteSpace(portValue) ||
+            string.IsNullOrWhiteSpace(username) ||
+            string.IsNullOrWhiteSpace(password) ||
+            string.IsNullOrWhiteSpace(fromEmail))
+        {
+            throw new InvalidOperationException(
+                "Password reset email is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL.");
+        }
+
+        if (!int.TryParse(portValue, out var port))
+            throw new InvalidOperationException("SMTP_PORT must be a valid number.");
+
+        using var message = new MailMessage
+        {
+            From = new MailAddress(fromEmail, fromName),
+            Subject = "EduMetrics AI - Reset your password",
+            IsBodyHtml = true,
+            Body = $"""
+                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px">
+                      <h2 style="color:#2563eb">EduMetrics AI</h2>
+                      <p>Hello {System.Net.WebUtility.HtmlEncode(recipientName)},</p>
+                      <p>We received a request to reset your EduMetrics AI password.</p>
+                      <p>This link will expire in <strong>30 minutes</strong>.</p>
+                      <p>
+                        <a href="{System.Net.WebUtility.HtmlEncode(resetLink)}"
+                           style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px">
+                          Reset Password
+                        </a>
+                      </p>
+                      <p>If you did not request this, you can safely ignore this email.</p>
+                    </div>
+                    """
+        };
+
+        message.To.Add(new MailAddress(recipientEmail));
+
+        using var smtp = new SmtpClient(host, port)
+        {
+            EnableSsl = true,
+            Credentials = new NetworkCredential(username, password)
+        };
+
+        await smtp.SendMailAsync(message);
+    }
+
+    private static string PasswordFingerprint(string passwordHash)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(passwordHash));
+        return Convert.ToHexString(hash);
+    }
+
+    private static string Sign(string value)
+    {
+        var secret =
+            Environment.GetEnvironmentVariable("Jwt__SecretKey")
+            ?? Environment.GetEnvironmentVariable("JWT_SECRET")
+            ?? "SUPER_SECRET_KEY_STUDENT_ANALYTICS_SYSTEM_2026_JWT_PRODUCTION_KEY";
+
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        return Base64UrlEncode(
+            hmac.ComputeHash(Encoding.UTF8.GetBytes(value)));
+    }
+
+    private static string Base64UrlEncode(byte[] bytes)
+    {
+        return Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+    }
+
+    private static byte[] Base64UrlDecode(string value)
+    {
+        var padded = value
+            .Replace('-', '+')
+            .Replace('_', '/');
+
+        padded += new string('=', (4 - padded.Length % 4) % 4);
+
+        return Convert.FromBase64String(padded);
     }
 }
 

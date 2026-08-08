@@ -47,6 +47,43 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequestDto request)
+    {
+        await _authService.RequestPasswordResetAsync(request.Email);
+
+        // Always return the same response so the API does not reveal
+        // whether an email address is registered.
+        return Ok(new
+        {
+            message = "If an account exists for this email, a password reset link has been sent."
+        });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequestDto request)
+    {
+        var success = await _authService.ResetPasswordAsync(
+            request.Token,
+            request.NewPassword,
+            request.ConfirmPassword);
+
+        if (!success)
+        {
+            return BadRequest(new
+            {
+                message = "The reset link is invalid or expired."
+            });
+        }
+
+        return Ok(new
+        {
+            message = "Password reset successfully. You can now log in with your new password."
+        });
+    }
+
     [HttpGet("generate-hash")]
     public ActionResult<string> GenerateHash()
     {
