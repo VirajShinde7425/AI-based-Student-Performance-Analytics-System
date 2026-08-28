@@ -436,16 +436,20 @@ const updateTeacher = async (id, teacherData) => {
 };
     const deleteTeacher = async (id) => {
         try {
+            const response = await api.delete(`/api/Teachers/${id}`);
 
-            await api.delete(`/api/Teachers/${id}`);
+            console.log("Delete teacher response:", response);
 
             await loadTeachers();
 
+            return true;
+
         } catch (err) {
-
             console.error("Delete teacher error:", err);
-            alert("Unable to delete teacher.");
+            console.error("Status:", err.response?.status);
+            console.error("Response:", err.response?.data);
 
+            return false;
         }
     };
 

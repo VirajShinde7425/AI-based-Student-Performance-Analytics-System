@@ -378,6 +378,63 @@ public async Task RequestPasswordResetAsync(string email)
             return false;
         }
     }
+
+    private string PasswordFingerprint(string passwordHash)
+    {
+        using var sha256 = SHA256.Create();
+
+        var hash = sha256.ComputeHash(
+            Encoding.UTF8.GetBytes(passwordHash));
+
+        return Convert.ToHexString(hash);
+    }
+
+    private string Base64UrlEncode(byte[] input)
+    {
+        return Convert.ToBase64String(input)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+    }
+
+    private byte[] Base64UrlDecode(string input)
+    {
+        var base64 = input
+            .Replace('-', '+')
+            .Replace('_', '/');
+
+        switch (base64.Length % 4)
+        {
+            case 2:
+                base64 += "==";
+                break;
+
+            case 3:
+                base64 += "=";
+                break;
+        }
+
+        return Convert.FromBase64String(base64);
+    }
+
+    private string Sign(string payload)
+    {
+        var secret = Environment.GetEnvironmentVariable("JWT_SECRET");
+
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            throw new InvalidOperationException(
+                "JWT_SECRET is not configured.");
+        }
+
+        using var hmac = new HMACSHA256(
+            Encoding.UTF8.GetBytes(secret));
+
+        var hash = hmac.ComputeHash(
+            Encoding.UTF8.GetBytes(payload));
+
+        return Base64UrlEncode(hash);
+    }
 private async Task SendResetEmailAsync(
     string recipientEmail,
     string recipientName,
@@ -475,6 +532,7 @@ private async Task SendResetEmailAsync(
         Console.WriteLine($"Resend ERROR: {ex}");
         throw;
     }
+}
 }
 
 public class StudentService : IStudentService
@@ -1247,7 +1305,7 @@ public class AttendanceService : IAttendanceService
             await _unitOfWork.CompleteAsync();
             return true;
         }
-
+    }
     public class SettingsService : ISettingsService
     {
         private readonly IUnitOfWork _unitOfWork;
@@ -1577,5 +1635,3 @@ public class AttendanceService : IAttendanceService
         }
     }
 
-
-}

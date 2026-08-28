@@ -61,25 +61,25 @@ const paginatedTeachers =
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
-
     const handleDelete = async (id, name) => {
+        if (window.confirm(`Delete ${name}?`)) {
 
-        if (
-            window.confirm(
-                `Delete ${name}?`
-            )
-        ) {
+            const success = await deleteTeacher(id);
 
-            await deleteTeacher(id);
-
-            addToast(
-                "Teacher Deleted",
-                `${name} has been removed.`,
-                "success"
-            );
-
+            if (success) {
+                addToast(
+                    "Teacher Deleted",
+                    `${name} has been removed.`,
+                    "success"
+                );
+            } else {
+                addToast(
+                    "Delete Failed",
+                    `Unable to delete ${name}. Check the console for details.`,
+                    "error"
+                );
+            }
         }
-
     };
 
     const handleResetPassword = async (id) => {
