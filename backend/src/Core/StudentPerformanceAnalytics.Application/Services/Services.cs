@@ -383,117 +383,97 @@ private async Task SendResetEmailAsync(
     string recipientName,
     string resetLink)
 {
-    var host = Environment.GetEnvironmentVariable("SMTP_HOST");
-    var portValue = Environment.GetEnvironmentVariable("SMTP_PORT");
-    var username = Environment.GetEnvironmentVariable("SMTP_USERNAME");
-    var password = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
+    var apiKey = Environment.GetEnvironmentVariable("RESEND_API_KEY");
 
     var fromEmail =
-        Environment.GetEnvironmentVariable("SMTP_FROM_EMAIL")
-        ?? username;
+        Environment.GetEnvironmentVariable("SMTP_FROM_EMAIL");
 
     var fromName =
         Environment.GetEnvironmentVariable("SMTP_FROM_NAME")
         ?? "EduMetrics AI";
 
-    if (string.IsNullOrWhiteSpace(host) ||
-        string.IsNullOrWhiteSpace(portValue) ||
-        string.IsNullOrWhiteSpace(username) ||
-        string.IsNullOrWhiteSpace(password) ||
-        string.IsNullOrWhiteSpace(fromEmail))
+    if (string.IsNullOrWhiteSpace(apiKey))
     {
         throw new InvalidOperationException(
-            "Password reset email is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL.");
+            "Password reset email is not configured. Set RESEND_API_KEY.");
     }
 
-    if (!int.TryParse(portValue, out var port))
-        throw new InvalidOperationException("SMTP_PORT must be a valid number.");
-
-    using var message = new MailMessage
+    if (string.IsNullOrWhiteSpace(fromEmail))
     {
-        From = new MailAddress(fromEmail, fromName),
-        Subject = "EduMetrics AI - Reset your password",
-        IsBodyHtml = true,
-        Body = $"""
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px">
-                  <h2 style="color:#2563eb">EduMetrics AI</h2>
-                  <p>Hello {System.Net.WebUtility.HtmlEncode(recipientName)},</p>
-                  <p>We received a request to reset your EduMetrics AI password.</p>
-                  <p>This link will expire in <strong>30 minutes</strong>.</p>
-                  <p>
-                    <a href="{System.Net.WebUtility.HtmlEncode(resetLink)}"
-                       style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px">
-                      Reset Password
-                    </a>
-                  </p>
-                  <p>If you did not request this, you can safely ignore this email.</p>
-                </div>
-                """
-    };
+        throw new InvalidOperationException(
+            "Password reset email is not configured. Set SMTP_FROM_EMAIL.");
+    }
 
-    message.To.Add(new MailAddress(recipientEmail));
+    var htmlBody = $"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px">
+          <h2 style="color:#2563eb">EduMetrics AI</h2>
 
-    Console.WriteLine($"SMTP: host configured = {!string.IsNullOrWhiteSpace(host)}");
-    Console.WriteLine($"SMTP: port = {port}");
-    Console.WriteLine($"SMTP: username configured = {!string.IsNullOrWhiteSpace(username)}");
-    Console.WriteLine($"SMTP: password configured = {!string.IsNullOrWhiteSpace(password)}");
-    Console.WriteLine($"SMTP: from email configured = {!string.IsNullOrWhiteSpace(fromEmail)}");
+          <p>Hello {System.Net.WebUtility.HtmlEncode(recipientName)},</p>
+
+          <p>We received a request to reset your EduMetrics AI password.</p>
+
+          <p>This link will expire in <strong>30 minutes</strong>.</p>
+
+          <p>
+            <a href="{System.Net.WebUtility.HtmlEncode(resetLink)}"
+               style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px">
+              Reset Password
+            </a>
+          </p>
+
+          <p>If you did not request this, you can safely ignore this email.</p>
+        </div>
+        """;
 
     try
     {
-        using var smtp = new SmtpClient(host, port)
+        using var httpClient = new HttpClient();
+
+        httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer",
+                apiKey);
+
+        var requestBody = new
         {
-            EnableSsl = true,
-            Credentials = new NetworkCredential(username, password)
+            from = $"{fromName} <{fromEmail}>",
+            to = new[] { recipientEmail },
+            subject = "EduMetrics AI - Reset your password",
+            html = htmlBody
         };
 
-        Console.WriteLine("SMTP: attempting to send email...");
+        var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
 
-        await smtp.SendMailAsync(message);
+        using var content = new StringContent(
+            json,
+            System.Text.Encoding.UTF8,
+            "application/json");
 
-        Console.WriteLine("SMTP: email sent successfully.");
+        Console.WriteLine("Resend: attempting to send email...");
+
+        var response = await httpClient.PostAsync(
+            "https://api.resend.com/emails",
+            content);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"Resend ERROR: {(int)response.StatusCode} {response.StatusCode}");
+            Console.WriteLine($"Resend response: {responseBody}");
+
+            throw new InvalidOperationException(
+                $"Resend email failed: {response.StatusCode}");
+        }
+
+        Console.WriteLine("Resend: email sent successfully.");
+        Console.WriteLine($"Resend response: {responseBody}");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"SMTP ERROR: {ex}");
+        Console.WriteLine($"Resend ERROR: {ex}");
         throw;
-    }
-}
-    private static string PasswordFingerprint(string passwordHash)
-    {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(passwordHash));
-        return Convert.ToHexString(hash);
-    }
-
-    private static string Sign(string value)
-    {
-        var secret =
-            Environment.GetEnvironmentVariable("Jwt__SecretKey")
-            ?? Environment.GetEnvironmentVariable("JWT_SECRET")
-            ?? "SUPER_SECRET_KEY_STUDENT_ANALYTICS_SYSTEM_2026_JWT_PRODUCTION_KEY";
-
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
-        return Base64UrlEncode(
-            hmac.ComputeHash(Encoding.UTF8.GetBytes(value)));
-    }
-
-    private static string Base64UrlEncode(byte[] bytes)
-    {
-        return Convert.ToBase64String(bytes)
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
-    }
-
-    private static byte[] Base64UrlDecode(string value)
-    {
-        var padded = value
-            .Replace('-', '+')
-            .Replace('_', '/');
-
-        padded += new string('=', (4 - padded.Length % 4) % 4);
-
-        return Convert.FromBase64String(padded);
     }
 }
 

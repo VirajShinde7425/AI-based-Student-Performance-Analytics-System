@@ -418,7 +418,7 @@ const addTeacher = async (teacherData) => {
 const updateTeacher = async (id, teacherData) => {
     try {
 
-        await api.put(`/Teachers/${id}`, {
+        await api.put(`/api/Teachers/${id}`, {
             fullName: teacherData.fullName,
             email: teacherData.email,
             department: teacherData.department,
@@ -434,21 +434,20 @@ const updateTeacher = async (id, teacherData) => {
 
     }
 };
+    const deleteTeacher = async (id) => {
+        try {
 
-const deleteTeacher = async (id) => {
-    try {
+            await api.delete(`/api/Teachers/${id}`);
 
-        await api.delete(`/Teachers/${id}`);
+            await loadTeachers();
 
-        await loadTeachers();
+        } catch (err) {
 
-    } catch (err) {
+            console.error("Delete teacher error:", err);
+            alert("Unable to delete teacher.");
 
-        console.error(err);
-        alert("Unable to delete teacher.");
-
-    }
-};
+        }
+    };
 
 const resetTeacherPassword = async (id) => {
     try {
