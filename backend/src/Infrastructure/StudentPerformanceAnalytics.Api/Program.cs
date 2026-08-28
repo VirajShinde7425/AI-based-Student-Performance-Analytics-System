@@ -1,6 +1,11 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StudentPerformanceAnalytics.Api.Middleware;
@@ -13,146 +18,126 @@ using StudentPerformanceAnalytics.Infrastructure.ExternalServices;
 using StudentPerformanceAnalytics.Infrastructure.Persistence;
 using System;
 using System.Text;
-using Microsoft.AspNetCore.HttpOverrides;
 
-var options = new WebApplicationOptions
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
-    Args = args
-};
-
-var builder = WebApplication.CreateBuilder(options);
-
+Args = args
+});
 
 // ============================================================
 // CONFIGURATION
 // ============================================================
 
-// Remove default configuration sources
 builder.Configuration.Sources.Clear();
 
-// Add configuration without file watching
 builder.Configuration
-    .AddJsonFile(
-        "appsettings.json",
-        optional: false,
-        reloadOnChange: false)
-    .AddJsonFile(
-        $"appsettings.{builder.Environment.EnvironmentName}.json",
-        optional: true,
-        reloadOnChange: false)
-    .AddEnvironmentVariables();
-
+.AddJsonFile(
+"appsettings.json",
+optional: true,
+reloadOnChange: false)
+.AddJsonFile(
+$"appsettings.{builder.Environment.EnvironmentName}.json",
+optional: true,
+reloadOnChange: false)
+.AddEnvironmentVariables();
 
 // ============================================================
-// 1. DATABASE / DbContext
+// DATABASE
 // ============================================================
 
 var connectionString =
-    builder.Configuration.GetConnectionString("PostgreSQLConnection");
+builder.Configuration.GetConnectionString("PostgreSQLConnection");
 
 var useInMemory =
-    builder.Configuration.GetValue<bool>(
-        "ConnectionStrings:UseInMemoryDatabase",
-        false);
+builder.Configuration.GetValue<bool>(
+"ConnectionStrings",
+false);
 
 if (useInMemory)
 {
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseInMemoryDatabase("StudentAnalyticsInMemoryDb"));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+options.UseInMemoryDatabase("StudentAnalyticsInMemoryDb"));
 }
 else
 {
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(connectionString));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+options.UseNpgsql(connectionString));
 }
 
-
 // ============================================================
-// 2. REPOSITORIES & UNIT OF WORK
+// REPOSITORIES & UNIT OF WORK
 // ============================================================
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
-
 builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
-
 builder.Services.AddScoped<IMarksRepository, MarksRepository>();
 
-
 // ============================================================
-// 3. APPLICATION SERVICES
+// APPLICATION SERVICES
 // ============================================================
 
 builder.Services.AddScoped<IAuthService, AuthService>();
-
 builder.Services.AddScoped<IStudentService, StudentService>();
-
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
-
 builder.Services.AddScoped<IMarksService, MarksService>();
-
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
-
 builder.Services.AddScoped<IPredictionService, PredictionService>();
-
 builder.Services.AddScoped<ISettingsService, SettingsService>();
-
 builder.Services.AddScoped<IStudentPortalService, StudentPortalService>();
-
 builder.Services.AddScoped<ITeacherService, TeacherService>();
-
 builder.Services.AddScoped<IAdminService, AdminService>();
+
+// ============================================================
+// JWT SERVICE
+// ============================================================
 
 builder.Services.AddScoped<IJwtService, JwtService>();
 
-
 // ============================================================
-// 4. REPORT SERVICES
+// REPORT SERVICES
 // ============================================================
 
 builder.Services.AddScoped<IReportsService, ReportsService>();
-
 builder.Services.AddScoped<IExcelReportService, ExcelReportService>();
 
-
 // ============================================================
-// 5. HTTP CLIENT - FLASK ML API
+// FLASK ML API
 // ============================================================
 
 builder.Services.AddHttpClient<IFlaskMlApiClient, FlaskMlApiClient>(client =>
 {
-    var flaskEndpoint =
-        builder.Configuration["FlaskApi:BaseUrl"]
-        ?? "http://localhost:5000";
+var flaskEndpoint =
+builder.Configuration["FlaskApi"]
+?? "http://localhost:5000";
 
-    client.BaseAddress = new Uri(flaskEndpoint);
+client.BaseAddress = new Uri(flaskEndpoint);
+client.Timeout = TimeSpan.FromSeconds(10);
 
-    client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-
 // ============================================================
-// 6. AUTOMAPPER & FLUENT VALIDATION
+// AUTOMAPPER & VALIDATION
 // ============================================================
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 
-
 // ============================================================
-// 7. JWT AUTHENTICATION
+// JWT AUTHENTICATION
 // ============================================================
 
 var secretKey =
-    builder.Configuration["Jwt:SecretKey"]
-    ?? "SUPER_SECRET_KEY_STUDENT_ANALYTICS_SYSTEM_2026_JWT_PRODUCTION_KEY";
+builder.Configuration["Jwt"]
+?? "SUPER_SECRET_KEY_STUDENT_ANALYTICS_SYSTEM_2026_JWT_PRODUCTION_KEY";
 
-builder.Services.AddAuthentication(options =>
+builder.Services
+.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme =
-        JwtBearerDefaults.AuthenticationScheme;
+options.DefaultAuthenticateScheme =
+JwtBearerDefaults.AuthenticationScheme;
 
     options.DefaultChallengeScheme =
         JwtBearerDefaults.AuthenticationScheme;
@@ -174,79 +159,69 @@ builder.Services.AddAuthentication(options =>
                     Encoding.UTF8.GetBytes(secretKey)),
 
             ValidateIssuer = false,
-
-            ValidateAudience = false,
-
-            ValidateLifetime = true,
-
-            ClockSkew = TimeSpan.Zero
+            ValidateAudience = false
         };
 });
 
 builder.Services.AddAuthorization();
 
-
 // ============================================================
-// 8. CORS - REACT FRONTEND
+// CORS
 // ============================================================
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy
-            .WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "https://ai-based-student-performance-analyt-zeta.vercel.app"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
+options.AddPolicy("AllowFrontend", policy =>
+{
+policy
+.WithOrigins(
+"http://localhost:3000",
+"http://localhost:5173",
+"https://ai-based-student-performance-analyt-zeta.vercel.app"
+)
+.AllowAnyHeader()
+.AllowAnyMethod()
+.AllowCredentials();
+});
 });
 
-
 // ============================================================
-// 9. CONTROLLERS
+// CONTROLLERS
 // ============================================================
 
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 
-
 // ============================================================
-// 10. SWAGGER / OPENAPI
+// SWAGGER
 // ============================================================
 
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "EduMetrics AI - ASP.NET Core 9 Web API",
+c.SwaggerDoc("v1", new OpenApiInfo
+{
+Title = "EduMetrics AI - ASP.NET Core 9 Web API",
+Version = "v1",
+Description =
+"Clean Architecture RESTful Web API backend for Student Performance Analytics System."
+});
 
-        Version = "v1",
-
-        Description =
-            "Clean Architecture RESTful Web API backend for Student Performance Analytics System."
-    });
-
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+c.AddSecurityDefinition(
+    "Bearer",
+    new OpenApiSecurityScheme
     {
         Description =
             "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
 
         Name = "Authorization",
-
         In = ParameterLocation.Header,
-
         Type = SecuritySchemeType.ApiKey,
-
         Scheme = "Bearer"
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+c.AddSecurityRequirement(
+    new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
@@ -262,8 +237,7 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
-});
-
+    });
 
 // ============================================================
 // BUILD APPLICATION
@@ -271,51 +245,44 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-
-// ============================================================
-// STARTUP LOG
-// ============================================================
-
 Console.WriteLine("====================================");
 Console.WriteLine("StudentPerformanceAnalytics.Api Started");
+Console.WriteLine("Environment: " + app.Environment.EnvironmentName);
 Console.WriteLine("====================================");
 
-
 // ============================================================
-// FORWARDED HEADERS - RENDER / PROXY
+// FORWARDED HEADERS - RENDER
 // ============================================================
 
-app.UseForwardedHeaders(new ForwardedHeadersOptions
+app.UseForwardedHeaders(
+new ForwardedHeadersOptions
 {
-    ForwardedHeaders =
-        ForwardedHeaders.XForwardedFor |
-        ForwardedHeaders.XForwardedProto
+ForwardedHeaders =
+ForwardedHeaders.XForwardedFor |
+ForwardedHeaders.XForwardedProto
 });
 
-
 // ============================================================
-// 11. GLOBAL EXCEPTION MIDDLEWARE
+// GLOBAL EXCEPTION HANDLING
 // ============================================================
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-
 // ============================================================
-// 12. SWAGGER
+// SWAGGER
 // ============================================================
 
 app.UseSwagger();
 
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint(
-        "/swagger/v1/swagger.json",
-        "EduMetrics AI API v1");
+c.SwaggerEndpoint(
+"/swagger/v1/swagger.json",
+"EduMetrics AI API v1");
 });
 
-
 // ============================================================
-// 13. REQUEST PIPELINE
+// MIDDLEWARE PIPELINE
 // ============================================================
 
 app.UseRouting();
@@ -328,45 +295,54 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-
 // ============================================================
-// 14. DATABASE MIGRATION & SEEDING
-// ============================================================
-
-using (var scope = app.Services.CreateScope())
-{
-    var context =
-        scope.ServiceProvider
-            .GetRequiredService<ApplicationDbContext>();
-
-    await context.Database.MigrateAsync();
-
-    await DbSeeder.SeedDataAsync(context);
-}
-
-
-// ============================================================
-// 15. HEALTH / ROOT ENDPOINT
+// ROOT / HEALTH ENDPOINT
 // ============================================================
 
 app.MapGet("/", () =>
 {
-    return Results.Ok(new
-    {
-        Application =
-            "Student Performance Analytics API",
-
-        Status =
-            "Running",
-
-        Environment =
-            app.Environment.EnvironmentName
-    });
+return Results.Ok(new
+{
+Application = "Student Performance Analytics API",
+Status = "Running",
+Environment = app.Environment.EnvironmentName
+});
 });
 
+// ============================================================
+// DATABASE MIGRATION & SEEDING
+// ============================================================
+
+using (var scope = app.Services.CreateScope())
+{
+var context =
+scope.ServiceProvider
+.GetRequiredService<ApplicationDbContext>();
+
+try
+{
+    Console.WriteLine("Starting database migration...");
+
+    await context.Database.MigrateAsync();
+
+    Console.WriteLine("Database migration completed.");
+
+    await DbSeeder.SeedDataAsync(context);
+
+    Console.WriteLine("Database seeding completed.");
+}
+catch (Exception ex)
+{
+    Console.WriteLine("DATABASE STARTUP ERROR:");
+    Console.WriteLine(ex);
+
+    throw;
+}
+
+}
 
 // ============================================================
-// RUN APPLICATION
+// RUN
 // ============================================================
 
 app.Run();

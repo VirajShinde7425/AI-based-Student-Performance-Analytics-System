@@ -384,17 +384,15 @@ const addStudent = async (newStudentData) => {
     alert("Unable to update student.");
   }
 };
-
-  const deleteStudent = async (id) => {
+const deleteStudent = async (id) => {
   try {
-    await api.delete(`/Students/${id}`);
+    await api.delete(`/api/Students/${id}`);
     await loadStudents();
   } catch (err) {
     console.error(err);
     alert("Unable to delete student.");
   }
 };
-
 const addTeacher = async (teacherData) => {
     try {
 
